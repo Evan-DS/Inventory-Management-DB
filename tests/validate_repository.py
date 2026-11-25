@@ -281,12 +281,20 @@ def main() -> int:
     browser_js = (ROOT / "APP" / "public" / "app.js").read_text(encoding="utf-8")
     html_ids = set(re.findall(r'\bid="([A-Za-z][A-Za-z0-9_-]*)"', html))
     selected_ids = set(re.findall(r"\$\('#([A-Za-z][A-Za-z0-9_-]*)'\)", browser_js))
-    # These two buttons are created dynamically when an order is rendered.
-    dynamic_ids = {"confirmOrderButton", "cancelOrderButton"}
-    missing_ids = selected_ids - html_ids - dynamic_ids
+    missing_ids = selected_ids - html_ids
     assert not missing_ids, f"Browser JavaScript selects missing HTML IDs: {sorted(missing_ids)}"
-    assert all(token in browser_js for token in ["confirmOrderButton", "cancelOrderButton"])
-    print("PASS: Node.js syntax and browser-to-HTML selector consistency")
+    for feature in ["inventory", "low-stock", "orders", "transfers", "analytics"]:
+        assert f'data-tab="{feature}"' in html, f"Missing Phase 4 navigation tab: {feature}"
+        assert f'id="panel-{feature}"' in html, f"Missing Phase 4 panel: {feature}"
+    for endpoint in ["/api/inventory", "/api/low-stock", "/api/orders", "/api/transfers", "/api/analytics/sales"]:
+        assert endpoint in browser_js, f"Missing frontend workflow for {endpoint}"
+    assert "confirm" in browser_js and "cancel" in browser_js
+    server_js = (ROOT / "APP" / "server.js").read_text(encoding="utf-8")
+    for route in ["/api/health", "/api/locations", "/api/categories", "/api/products", "/api/customers", "/api/inventory", "/api/low-stock", "/api/orders", "/api/transfers", "/api/analytics/sales"]:
+        assert route in server_js, f"Missing backend route: {route}"
+    assert "renderer(row, index)" in browser_js, "Analytics table must receive its row index"
+    assert "beginTransaction" in server_js and "commit" in server_js and "rollback" in server_js
+    print("PASS: Node.js syntax, UI selectors, five workflows, backend routes and transaction handling")
 
     connection.close()
     print("\nALL OFFLINE CHECKS PASSED.")

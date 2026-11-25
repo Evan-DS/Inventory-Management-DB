@@ -118,6 +118,22 @@ app.get('/api/categories', async (_req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.get('/api/products', async (req, res, next) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    const requestedLimit = Number(req.query.limit || 500);
+    const limit = Number.isSafeInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 5000) : 500;
+    const [rows] = await pool.execute(
+      `SELECT ProductID, ProductName, UnitPrice, CategoryID
+         FROM Product
+        WHERE (? = '' OR ProductName LIKE CONCAT('%', ?, '%'))
+        ORDER BY ProductName
+        LIMIT ?`, [search, search, limit]
+    );
+    res.json(rows);
+  } catch (error) { next(error); }
+});
+
 app.get('/api/customers', async (req, res, next) => {
   try {
     const search = String(req.query.search || '').trim();

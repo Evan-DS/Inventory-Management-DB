@@ -1,23 +1,37 @@
 # Phase 4 Web Application
 
+This is the IOMS web application built with Node.js, Express, MySQL and a plain HTML/CSS/JavaScript frontend.
+
 ## Requirements
 
 - Node.js 20 or newer
 - MySQL 8.0.16 or newer
-- The IOMS `ioms_db` database loaded from `DUMP/ioms_database_dump.sql`
+- The `ioms_db` database loaded from `../DUMP/ioms_database_dump.sql`
 
-## Install and configure
+## Setup (Windows PowerShell)
 
-From the `APP` directory:
+Open a terminal in this `APP` folder and run:
 
-```bash
+```powershell
 npm install
-cp .env.example .env
+Copy-Item .env.example .env
 ```
 
-Edit `.env` with the MySQL host, port, username, password and database name. Never commit `.env`.
+Edit `.env` and enter the credentials for your MySQL server. The application expects the database name `ioms_db` by default.
 
-For a dedicated local application account, a MySQL administrator can run:
+Example `.env` values:
+
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=ioms_app
+DB_PASSWORD=your_mysql_password
+DB_NAME=ioms_db
+PORT=3000
+NODE_ENV=development
+```
+
+A separate MySQL account is preferable to using `root`. A MySQL administrator can create one with:
 
 ```sql
 CREATE USER 'ioms_app'@'localhost' IDENTIFIED BY 'choose_a_strong_password';
@@ -25,32 +39,57 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ioms_db.* TO 'ioms_app'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-Set `DB_USER` and `DB_PASSWORD` in `.env` to match the account. If Node runs on a different host, adjust the MySQL account host and `DB_HOST` accordingly.
+Use the same username and password in `.env`. If MySQL is on another computer, adjust the MySQL account host and `DB_HOST` accordingly.
 
-## Start
+## Start the application
 
-```bash
+```powershell
 npm start
 ```
 
-Open <http://localhost:3000>. The header reports whether the API can reach MySQL.
+Open <http://localhost:3000>. The connection indicator in the top-right corner reports whether the backend can reach MySQL.
 
-## Functionalities and validation
+To check JavaScript syntax without starting the server:
 
-1. **Inventory lookup** — searches products and shows stock by location. The displayed rows validate the query.
-2. **Low-stock alerts** — filters product/location rows where `Quantity <= ReorderPoint` by category, location and recent-sales period; the result includes recent units sold.
-3. **Create sales order** — writes a `SalesOrderHeader` and its `SalesOrderDetail` rows in one transaction. The new order appears with its lines and derived total.
-4. **Confirm or cancel sales order** — confirmation locks the pending order and inventory rows, checks stock, deducts quantities and changes the status to `Confirmed` in one transaction. Cancelling a confirmed order restores its quantities before changing the status to `Cancelled`; cancelling a pending order does not change stock. Both paths are transactional and cannot be repeated.
-5. **Inventory transfer** — checks source stock, updates source and destination inventory, and inserts an `InventoryTransfer` row in one transaction. It rejects transfers to the same location or transfers exceeding source stock.
-6. **Sales analytics** — ranks best-selling products over a date range, optionally filtered by category, and shows units sold, revenue and total current stock across locations.
+```powershell
+npm run check
+```
 
-The application uses the current product price when creating an order and stores it in `SalesOrderDetail.UnitPrice`, preserving the transaction price if the current product price changes later. The schema's `(OrderID, ProductID)` key means duplicate product lines are rejected; the UI requires a distinct product line per product.
+## What the application does
 
-## Operational notes
+1. **Inventory lookup:** search products and filter by location or category. The results show stock and reorder points for each product/location pair.
+2. **Low-stock alerts:** find inventory at or below its reorder point. The query joins product, category, location, inventory and recent confirmed sales.
+3. **Sales orders:** create a pending order for a customer and location, inspect its lines and total, then confirm or cancel it. Confirmation deducts stock; cancelling a confirmed order restores it. These changes run in transactions.
+4. **Inventory transfers:** move a quantity from one location to another. The source and destination stock changes and transfer record are committed together.
+5. **Sales analytics:** rank products by confirmed units sold and revenue for a date range, optionally filtered by category, and show current stock across locations.
 
-- A newly created order is `Pending`; inventory is not deducted until it is confirmed.
-- A confirmation can only be performed once. Non-pending orders are rejected. Cancellation is allowed for Pending and Confirmed orders; confirmed orders restore their original quantities exactly once.
-- All application database access uses parameterized statements.
-- Errors are returned as JSON with a suitable HTTP status; the frontend displays those messages.
-- Customer IDs and Product IDs are entered directly in the order/transfer forms. Customer IDs in the generated dataset range from 1 to 1,500; use the inventory table to look up product IDs.
-- The application is intended for the course demonstration and is not a production deployment (no authentication/authorization layer is included).
+The application has read and write operations. The low-stock report and sales analytics are multi-table aggregate queries. Each write operation returns a confirmation or updated record in the interface.
+
+## Important behaviour
+
+- A new sales order is `Pending`; it does not reserve or deduct inventory until confirmed.
+- Confirmation checks available inventory and rejects the entire order if any line cannot be fulfilled.
+- A confirmed order can be cancelled once; its original quantities are restored once. A pending order can be cancelled without changing stock.
+- Each product can appear only once in a sales order because `SalesOrderDetail` uses `(OrderID, ProductID)` as its primary key. Combine quantities for repeated products.
+- A transfer rejects identical source/destination locations and insufficient source stock. If the destination has no inventory row for the product, the app creates it with the source location's reorder point.
+- All SQL values supplied by users are passed as parameters. The frontend also checks required fields and positive whole-number quantities; the backend repeats validation.
+- The application is designed for the course project, not production use. It does not include user authentication or role-based access control.
+
+## Manual test checklist
+
+For a short walkthrough order and the remaining demo/submission tasks, see [`DEMO_CHECKLIST.md`](DEMO_CHECKLIST.md).
+
+
+Use the populated database. Test each item through the browser, not by calling the API alone.
+
+- [ ] Search inventory by product name, location and category.
+- [ ] Run low-stock alerts for a location and date window; verify recent sales are shown.
+- [ ] Create a pending order and look it up by its displayed order ID.
+- [ ] Confirm the order and verify that the relevant inventory quantity decreases.
+- [ ] Cancel that confirmed order and verify that the inventory quantity is restored.
+- [ ] Attempt to confirm an order with insufficient stock and verify that no line is deducted.
+- [ ] Transfer stock between two different locations and verify both quantities change.
+- [ ] Attempt a transfer with insufficient source stock and verify that it is rejected.
+- [ ] Run sales analytics for a date range and verify the ranked products and totals.
+
+The offline repository tests check schema/data consistency and JavaScript syntax. They do not replace this live MySQL and browser testing. Capture your own screenshots and use the actual final database state for the Phase 4 demo and dump. Do not submit `.env` or `node_modules`.

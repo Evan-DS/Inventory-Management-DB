@@ -3,100 +3,92 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IOMS | Inventory & Order Management</title>
+  <meta name="theme-color" content="#172b4d">
+  <title>Inventory Management System</title>
   <link rel="stylesheet" href="/styles.css">
-  <script defer src="/app.js"></script>
+  <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand-mark">IOMS</div>
-    <div>
-      <h1>Inventory &amp; Order Management</h1>
-      <p>Multi-location stock, orders, transfers and sales</p>
-    </div>
-    <div id="connectionStatus" class="connection pending">Checking database…</div>
+    <div class="brand"><div class="brand-mark">IM</div><div><strong>Inventory Management</strong><span>Inventory and Order Management System</span></div></div>
+    <div class="connection"><span class="status-dot" id="health-dot"></span><span id="health-text">Checking database…</span></div>
   </header>
+  <main class="shell">
+    <section class="intro">
+      <div><p class="eyebrow">ECE 9014 · IOMS</p><h1>Inventory overview</h1><p class="muted">Track stock, process orders, move inventory and review sales performance.</p></div>
+      <button class="button button-light" id="refresh-all" type="button">Refresh data</button>
+    </section>
+    <nav class="tabs" aria-label="Application sections">
+      <button class="tab active" data-tab="inventory" type="button">Inventory</button>
+      <button class="tab" data-tab="low-stock" type="button">Low stock</button>
+      <button class="tab" data-tab="orders" type="button">Sales orders</button>
+      <button class="tab" data-tab="transfers" type="button">Transfers</button>
+      <button class="tab" data-tab="analytics" type="button">Sales analytics</button>
+    </nav>
 
-  <nav class="tabs" aria-label="Application functions">
-    <button class="tab active" data-tab="inventory">Inventory</button>
-    <button class="tab" data-tab="low-stock">Low-stock alerts</button>
-    <button class="tab" data-tab="orders">Sales orders</button>
-    <button class="tab" data-tab="transfers">Inventory transfers</button>
-    <button class="tab" data-tab="analytics">Sales analytics</button>
-  </nav>
-
-  <main>
-    <section id="panel-inventory" class="panel active">
-      <div class="section-heading"><div><h2>Inventory lookup</h2><p>Search products and compare stock across locations.</p></div></div>
-      <form id="inventorySearchForm" class="filter-row">
-        <label>Product name<input name="search" placeholder="e.g. Helmet"></label>
-        <label>Category<select name="categoryId" id="inventoryCategory"><option value="">All categories</option></select></label>
-        <label>Location<select name="locationId" id="inventoryLocation"><option value="">All locations</option></select></label>
-        <button class="primary" type="submit">Search inventory</button>
+    <section class="panel active" id="panel-inventory">
+      <div class="section-heading"><div><h2>Inventory lookup</h2><p>Search products and see their quantities at each location.</p></div><span class="count" id="inventory-count">0 records</span></div>
+      <form class="filter-grid" id="inventory-filter">
+        <label>Product name<input name="search" placeholder="Search products…"></label>
+        <label>Location<select name="locationId" id="inventory-location"><option value="">All locations</option></select></label>
+        <label>Category<select name="categoryId" id="inventory-category"><option value="">All categories</option></select></label>
+        <label class="check-label"><input type="checkbox" name="lowOnly"> Show low stock only</label>
+        <button class="button" type="submit">Search inventory</button>
       </form>
-      <div id="inventoryResults" class="result-area"></div>
+      <div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Location</th><th>Available</th><th>Reorder point</th><th>Status</th></tr></thead><tbody id="inventory-rows"><tr><td colspan="6" class="empty">Search to load inventory.</td></tr></tbody></table></div>
     </section>
 
-    <section id="panel-low-stock" class="panel">
-      <div class="section-heading"><div><h2>Low-stock alerts</h2><p>Filter replenishment alerts by location, category and recent sales activity.</p></div><button id="refreshLowStock" class="secondary">Refresh</button></div>
-      <form id="lowStockFilterForm" class="filter-row">
-        <label>Location<select id="lowStockLocation"><option value="">All locations</option></select></label>
-        <label>Category<select id="lowStockCategory"><option value="">All categories</option></select></label>
-        <label>Recent sales period (days)<input id="lowStockDays" type="number" min="1" max="365" value="30"></label>
-        <button class="primary" type="submit">Apply filters</button>
+    <section class="panel" id="panel-low-stock">
+      <div class="section-heading"><div><h2>Low-stock alerts</h2><p>Products at or below their location-specific reorder point, with recent confirmed sales.</p></div></div>
+      <form class="filter-grid" id="low-stock-filter">
+        <label>Sales period<select name="days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="180">Last 180 days</option><option value="365">Last 365 days</option></select></label>
+        <label>Location<select name="locationId" id="low-location"><option value="">All locations</option></select></label>
+        <label>Category<select name="categoryId" id="low-category"><option value="">All categories</option></select></label>
+        <button class="button" type="submit">Find low stock</button>
       </form>
-      <div id="lowStockResults" class="result-area"></div>
+      <div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Location</th><th>On hand</th><th>Reorder point</th><th>Below target</th><th>Sold recently</th></tr></thead><tbody id="low-stock-rows"><tr><td colspan="7" class="empty">Run the low-stock search.</td></tr></tbody></table></div>
     </section>
 
-    <section id="panel-orders" class="panel">
-      <div class="section-heading"><div><h2>Create and confirm a sales order</h2><p>New orders begin as Pending. Confirming an order deducts stock transactionally.</p></div></div>
-      <form id="orderForm" class="form-card">
+    <section class="panel" id="panel-orders">
+      <div class="section-heading"><div><h2>Create a sales order</h2><p>New orders start as Pending. Confirming an order deducts stock in a database transaction.</p></div></div>
+      <form id="order-form" class="form-card">
         <div class="form-grid">
-          <label>Customer ID<input id="orderCustomer" type="number" min="1" max="1500" required placeholder="1–1500"></label>
-          <label>Fulfillment location<select id="orderLocation" required></select></label>
+          <label>Customer<select name="customerId" id="order-customer" required><option value="">Choose a customer</option></select></label>
+          <label>Fulfillment location<select name="locationId" id="order-location" required><option value="">Choose a location</option></select></label>
         </div>
-        <div class="line-entry">
-          <label>Product ID<input id="orderProductId" type="number" min="1" required placeholder="e.g. 1"></label>
-          <label>Quantity<input id="orderQuantity" type="number" min="1" step="1" required value="1"></label>
-          <button id="addOrderLine" class="secondary" type="button">Add product line</button>
-        </div>
-        <div id="orderLines" class="line-list"><p class="muted">No product lines added yet.</p></div>
-        <button class="primary" type="submit">Create pending order</button>
+        <div class="line-header"><h3>Order items</h3><button class="button button-light button-small" type="button" id="add-order-line">+ Add product</button></div>
+        <div id="order-lines" class="order-lines"></div>
+        <div class="form-actions"><button class="button" type="submit">Create pending order</button></div>
       </form>
-      <div id="orderMessage" class="message" aria-live="polite"></div>
-      <div class="lookup-card">
-        <h3>Look up an existing order</h3>
-        <form id="orderLookupForm" class="inline-form"><label>Order ID<input name="orderId" type="number" min="1" required></label><button class="secondary">Find order</button></form>
-      </div>
-      <div id="orderResults" class="result-area"></div>
+      <div class="subsection"><h3>Find and manage an order</h3><form id="order-lookup" class="inline-form"><label>Order ID<input name="orderId" type="number" min="1" required placeholder="Enter order ID"></label><button class="button" type="submit">Find order</button></form><div id="order-result" class="result-area" aria-live="polite">Order details and available actions will appear here.</div></div>
     </section>
 
-    <section id="panel-transfers" class="panel">
-      <div class="section-heading"><div><h2>Transfer inventory</h2><p>Move stock between two locations. Both inventory changes and the transfer record commit together.</p></div></div>
-      <form id="transferForm" class="form-card">
+    <section class="panel" id="panel-transfers">
+      <div class="section-heading"><div><h2>Inventory transfer</h2><p>Move stock between locations. Both inventory changes and the transfer record are saved together.</p></div></div>
+      <form id="transfer-form" class="form-card">
         <div class="form-grid">
-          <label>Product ID<input name="productId" type="number" min="1" required placeholder="e.g. 1"></label>
+          <label>Product<select name="productId" id="transfer-product" required><option value="">Choose a product</option></select></label>
           <label>Quantity<input name="quantity" type="number" min="1" step="1" required></label>
-          <label>Source location<select name="sourceLocationId" id="transferSource" required></select></label>
-          <label>Destination location<select name="destinationLocationId" id="transferDestination" required></select></label>
+          <label>From location<select name="sourceLocationId" id="transfer-source" required><option value="">Choose source</option></select></label>
+          <label>To location<select name="destinationLocationId" id="transfer-destination" required><option value="">Choose destination</option></select></label>
         </div>
-        <button class="primary" type="submit">Complete transfer</button>
+        <div class="form-actions"><button class="button" type="submit">Complete transfer</button></div>
       </form>
-      <div id="transferMessage" class="message" aria-live="polite"></div>
+      <div id="transfer-result" class="result-area" aria-live="polite">Transfer confirmation will appear here.</div>
     </section>
 
-    <section id="panel-analytics" class="panel">
-      <div class="section-heading"><div><h2>Sales analytics</h2><p>Best-selling products, sales revenue and current inventory for confirmed orders.</p></div></div>
-      <form id="analyticsForm" class="filter-row">
-        <label>From<input name="from" type="date" value="2026-01-01" required></label>
-        <label>To<input name="to" type="date" value="2026-11-24" required></label>
-        <label>Category<select id="analyticsCategory" name="categoryId"><option value="">All categories</option></select></label>
-        <button class="primary">Run sales report</button>
+    <section class="panel" id="panel-analytics">
+      <div class="section-heading"><div><h2>Sales analytics</h2><p>Best-selling products by confirmed sales, with revenue and current stock across all locations.</p></div></div>
+      <form id="analytics-filter" class="filter-grid">
+        <label>From<input type="date" name="from" required></label>
+        <label>To<input type="date" name="to" required></label>
+        <label>Category<select name="categoryId" id="analytics-category"><option value="">All categories</option></select></label>
+        <button class="button" type="submit">Run report</button>
       </form>
-      <div id="analyticsResults" class="result-area"></div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>Product</th><th>Category</th><th>Units sold</th><th>Revenue</th><th>Current stock</th></tr></thead><tbody id="analytics-rows"><tr><td colspan="6" class="empty">Choose a date range to run the report.</td></tr></tbody></table></div>
     </section>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <footer>Inventory and Order Management System · ECE 9014</footer>
   </main>
-
-  <footer><span>Inventory Management DB · IOMS</span><span>Database-backed demonstration application</span></footer>
 </body>
 </html>
