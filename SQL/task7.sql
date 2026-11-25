@@ -2,7 +2,10 @@
 USE ioms_db;
 
 -- 1) INSERT ... SELECT: add three proposed transfers for existing products.
--- The fixed demonstration ID range keeps these examples easy to identify and clean up.
+-- Fixed IDs make the demonstration rows easy to identify and delete below.
+-- Run this Task 5 script once after loading the fresh database dump.
+-- The SELECT reads from Product only; it does not read InventoryTransfer,
+-- avoiding MySQL's restriction on selecting from the target table in a subquery.
 INSERT INTO InventoryTransfer
     (TransferID, Quantity, TransferDate, TransferStatus, ProductID, SourceLocationID, DestinationLocationID)
 SELECT
@@ -14,12 +17,7 @@ SELECT
     1,
     2
 FROM Product AS p
-WHERE p.ProductID BETWEEN 1 AND 3
-  AND NOT EXISTS (
-      SELECT 1
-      FROM InventoryTransfer AS existing_transfer
-      WHERE existing_transfer.TransferID = 900000 + p.ProductID
-  );
+WHERE p.ProductID BETWEEN 1 AND 3;
 
 -- 2) UPDATE multiple inventory records using a grouped subquery over sales details.
 -- Set the reorder threshold to 25 for products with at least 5 confirmed units sold from Location 1.

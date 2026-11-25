@@ -12,7 +12,7 @@ SRC/       Python script that generates the test data and MySQL dump
 DUMP/      Generated database dump
 DATA/      Sample records and generated row counts
 APP/       Phase 4 Express application
-tests/     Offline checks for the schema, data and application code
+ tests/    Offline checks for the schema, data and application code
 ```
 
 ## Phase 3 files
@@ -68,7 +68,7 @@ Then run `SQL/verify_schema.sql` to inspect the tables and row counts.
 Run these files in order after loading the database:
 
 1. `SQL/task4.sql`
-2. `SQL/task7.sql`
+2. `SQL/task7.sql` (run once after loading a fresh dump; it uses fixed demonstration TransferIDs 900001–900003)
 3. `SQL/task6.sql`
 4. `SQL/task8.sql`
 
@@ -86,4 +86,4 @@ These are offline checks using a SQLite compatibility adapter. They are useful f
 
 ## Phase 4 application
 
-The Express application is in `APP/`. It provides inventory lookup, low-stock alerts, sales-order creation and management, inventory transfers, and sales analytics. See `APP/README.md` for setup and `APP/DEMO_CHECKLIST.md` for the demo run-through and remaining team tasks. It uses the same eight-table schema and reads database credentials from `APP/.env`. Do not commit `.env` or `node_modules`.
+The Express application is in `APP/`. See `APP/README.md` for setup. It uses the same eight-table schema and reads database credentials from `APP/.env`. Do not commit `.env` or `node_modules`.
